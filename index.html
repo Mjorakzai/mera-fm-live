@@ -169,7 +169,8 @@
         </div>
     </div>
 
-    <audio id="audioPlayer" preload="auto"></audio>
+    <!-- AUDIO PLAYER (No CORS constraints) -->
+    <audio id="audioPlayer" preload="none"></audio>
 
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
@@ -187,7 +188,7 @@
         const app = initializeApp(firebaseConfig);
         const db = getDatabase(app);
         const audio = document.getElementById('audioPlayer');
-        let stations = [], curIdx = 0, audioCtx, analyser;
+        let stations = [], curIdx = 0;
         let isUserPaused = true;
 
         setTimeout(() => {
@@ -305,53 +306,40 @@
             playAudio(); generateVFX(); updateSchedule(s);
         };
 
-        // --- NETWORK ERROR CATCHER ---
-        audio.onerror = function() {
-            const title = document.getElementById('sched-show');
-            title.innerText = "STREAM OFFLINE / DEAD LINK";
-            title.className = "text-[10px] font-black uppercase text-red-500 tracking-widest";
-            document.getElementById('sched-rj').innerText = "Link check karein, ya server down hai";
-            updateBtn();
-        };
-
-        function initVis() {
-            if (audioCtx) return;
-            try {
-                audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-                analyser = audioCtx.createAnalyser(); analyser.fftSize = 64;
-                const canvas = document.getElementById('visualizer'); 
-                const ctx = canvas.getContext('2d'); 
-                function draw() { 
-                    requestAnimationFrame(draw); 
-                    ctx.clearRect(0,0,canvas.width, canvas.height);
-                    let x = 0; const bWidth = (canvas.width/32)*2.5;
-                    for(let i=0; i<32; i++){ 
-                        const h = !audio.paused ? (Math.random() * 50 + 10) : 5; 
-                        ctx.fillStyle = `rgba(59,130,246,${h/100+0.4})`; 
-                        ctx.beginPath(); 
-                        ctx.roundRect(x, canvas.height-h, bWidth-4, h, [5,5,0,0]); 
-                        ctx.fill(); 
-                        x += bWidth; 
-                    }
-                } 
-                draw();
-            } catch (e) {
-                console.log("Audio Context Error bypassed.");
-            }
+        // --- NEW STANDALONE VISUALIZER (NO AUDIO CONTEXT CORS BLOCK) ---
+        function startVisualizer() {
+            const canvas = document.getElementById('visualizer'); 
+            const ctx = canvas.getContext('2d'); 
+            function draw() { 
+                requestAnimationFrame(draw); 
+                ctx.clearRect(0,0,canvas.width, canvas.height);
+                let x = 0; const bWidth = (canvas.width/32)*2.5;
+                for(let i=0; i<32; i++){ 
+                    const h = !audio.paused ? (Math.random() * 50 + 10) : 5; 
+                    ctx.fillStyle = `rgba(59,130,246,${h/100+0.4})`; 
+                    ctx.beginPath(); 
+                    ctx.roundRect(x, canvas.height-h, bWidth-4, h, [5,5,0,0]); 
+                    ctx.fill(); 
+                    x += bWidth; 
+                }
+            } 
+            draw();
         }
+        startVisualizer();
 
         function playAudio() { 
-            if(!audioCtx) initVis(); 
-            if (audioCtx && audioCtx.state === 'suspended') audioCtx.resume(); 
             isUserPaused = false;
-            
             document.getElementById('sched-show').innerText = "Buffering...";
             
             audio.play().then(() => {
                 updateSchedule(stations[curIdx]);
                 updateBtn(); 
             }).catch((error) => {
-                console.error("Audio Play Error:", error);
+                const title = document.getElementById('sched-show');
+                title.innerText = "STREAM BLOCK / ERROR";
+                title.className = "text-[10px] font-black uppercase text-red-500 tracking-widest";
+                document.getElementById('sched-rj').innerText = "Check your link (HTTP vs HTTPS)";
+                updateBtn();
             });
         }
 
