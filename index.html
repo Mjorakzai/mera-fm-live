@@ -169,7 +169,6 @@
         </div>
     </div>
 
-    <!-- AUDIO PLAYER -->
     <audio id="audioPlayer" preload="auto"></audio>
 
     <script type="module">
@@ -306,6 +305,15 @@
             playAudio(); generateVFX(); updateSchedule(s);
         };
 
+        // --- NETWORK ERROR CATCHER ---
+        audio.onerror = function() {
+            const title = document.getElementById('sched-show');
+            title.innerText = "STREAM OFFLINE / DEAD LINK";
+            title.className = "text-[10px] font-black uppercase text-red-500 tracking-widest";
+            document.getElementById('sched-rj').innerText = "Link check karein, ya server down hai";
+            updateBtn();
+        };
+
         function initVis() {
             if (audioCtx) return;
             try {
@@ -332,7 +340,6 @@
             }
         }
 
-        // --- NEW PLAY FUNCTION WITH ERROR DETECTOR ---
         function playAudio() { 
             if(!audioCtx) initVis(); 
             if (audioCtx && audioCtx.state === 'suspended') audioCtx.resume(); 
@@ -341,18 +348,10 @@
             document.getElementById('sched-show').innerText = "Buffering...";
             
             audio.play().then(() => {
-                updateSchedule(stations[curIdx]); // Reset text when playing
+                updateSchedule(stations[curIdx]);
                 updateBtn(); 
             }).catch((error) => {
                 console.error("Audio Play Error:", error);
-                // IF SOUND FAILS, SHOW RED ERROR TEXT
-                const title = document.getElementById('sched-show');
-                title.innerText = "STREAM ERROR (HTTP BLOCKED)";
-                title.className = "text-[10px] font-black uppercase text-red-500 tracking-widest";
-                document.getElementById('sched-rj').innerText = "Check your Firebase URL (Must be HTTPS)";
-                
-                updateBtn();
-                alert("Browser ne sound ko block kar diya hai. Barae meharbani Firebase mein check karein ke aapki Radio link 'HTTPS://' se shuru hoti hai ya 'HTTP://' se. GitHub par HTTP links nahi chalti!");
             });
         }
 
