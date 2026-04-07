@@ -169,7 +169,7 @@
         </div>
     </div>
 
-    <!-- AUDIO PLAYER UPDATED FOR GITHUB CORS FIX -->
+    <!-- AUDIO PLAYER -->
     <audio id="audioPlayer" preload="auto"></audio>
 
     <script type="module">
@@ -191,7 +191,6 @@
         let stations = [], curIdx = 0, audioCtx, analyser;
         let isUserPaused = true;
 
-        // Failsafe Timer: Agar logo load na ho toh 3 second baad black screen hata do
         setTimeout(() => {
             const splash = document.getElementById('splash');
             if(splash) {
@@ -200,7 +199,6 @@
             }
         }, 3000);
 
-        // --- VFX ENGINE ---
         const vfxBase = ['vfx-shine', 'vfx-pulse', 'vfx-chromatic'];
         const vfxColors = ['text-white', 'text-blue-400', 'text-cyan-300', 'text-emerald-400', 'text-yellow-400', 'text-pink-400'];
         let currentVFX = 'vfx-shine text-white';
@@ -210,7 +208,6 @@
             document.getElementById('date-label').className = `date-display ${currentVFX}`;
         }
 
-        // --- CLOCK & SCHEDULE UPDATE ---
         function updateClock() {
             const now = new Date();
             document.getElementById('h-box').innerText = String(now.getHours()).padStart(2, '0');
@@ -252,7 +249,6 @@
             }
         }
 
-        // --- GLOBAL SETTINGS & MAINTENANCE LOGIC ---
         onValue(ref(db, 'settings'), (snap) => {
             const data = snap.val() || {};
             const url = data.globalLogo || "";
@@ -260,7 +256,6 @@
             const isMaintMode = data.isMaintenance || false; 
             const maintMsg = data.maintenanceMsg || "We are currently under maintenance.";
 
-            // 1. Logo Update
             if(url) {
                 document.getElementById('splash-img').src = url;
                 document.getElementById('header-logo').src = url;
@@ -268,7 +263,6 @@
             }
             document.getElementById('header-logo').style.display = isEnabled ? 'block' : 'none';
 
-            // 2. Maintenance Overlay Logic
             const maintOverlay = document.getElementById('maint-screen');
             if (isMaintMode) {
                 audio.pause();
@@ -281,7 +275,6 @@
             }
         });
 
-        // --- STATIONS LOGIC ---
         onValue(ref(db, 'stations'), (snap) => {
             const list = document.getElementById('station-list'); list.innerHTML = ''; 
             stations = [];
@@ -313,7 +306,6 @@
             playAudio(); generateVFX(); updateSchedule(s);
         };
 
-        // AUDIO FIX: Safe Visualizer animation without cross-origin issues
         function initVis() {
             if (audioCtx) return;
             try {
@@ -340,12 +332,28 @@
             }
         }
 
+        // --- NEW PLAY FUNCTION WITH ERROR DETECTOR ---
         function playAudio() { 
             if(!audioCtx) initVis(); 
             if (audioCtx && audioCtx.state === 'suspended') audioCtx.resume(); 
             isUserPaused = false;
-            audio.play().catch(() => console.log("Buffering...")); 
-            updateBtn(); 
+            
+            document.getElementById('sched-show').innerText = "Buffering...";
+            
+            audio.play().then(() => {
+                updateSchedule(stations[curIdx]); // Reset text when playing
+                updateBtn(); 
+            }).catch((error) => {
+                console.error("Audio Play Error:", error);
+                // IF SOUND FAILS, SHOW RED ERROR TEXT
+                const title = document.getElementById('sched-show');
+                title.innerText = "STREAM ERROR (HTTP BLOCKED)";
+                title.className = "text-[10px] font-black uppercase text-red-500 tracking-widest";
+                document.getElementById('sched-rj').innerText = "Check your Firebase URL (Must be HTTPS)";
+                
+                updateBtn();
+                alert("Browser ne sound ko block kar diya hai. Barae meharbani Firebase mein check karein ke aapki Radio link 'HTTPS://' se shuru hoti hai ya 'HTTP://' se. GitHub par HTTP links nahi chalti!");
+            });
         }
 
         window.togglePlay = () => { if (audio.paused) playAudio(); else { isUserPaused = true; audio.pause(); updateBtn(); } };
