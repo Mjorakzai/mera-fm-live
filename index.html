@@ -1,0 +1,363 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>Mera FM | Pro Wide Elegant</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css">
+    <style>
+        body { background-color: #000; color: #fff; font-family: 'Roboto', sans-serif; user-select: none; overflow: hidden; }
+        img { background: transparent !important; object-fit: contain; mix-blend-mode: screen; }
+
+        /* --- TIME DISPLAY --- */
+        .time-wrapper {
+            display: flex; flex-direction: column; align-items: center;
+            background: rgba(10, 10, 10, 0.85); padding: 12px 45px; border-radius: 25px;
+            position: relative; overflow: hidden; border: 1px solid rgba(59, 130, 246, 0.15);
+            box-shadow: 0 15px 40px rgba(0,0,0,0.9); width: 88%;
+        }
+        .time-wrapper::before {
+            content: ''; position: absolute; inset: 0;
+            border: 1px solid #3b82f6; border-radius: 25px;
+            animation: neon-border-pulse 3s linear infinite;
+            filter: blur(1px); opacity: 0.4;
+        }
+        @keyframes neon-border-pulse {
+            0%, 100% { opacity: 0.2; box-shadow: inset 0 0 10px #3b82f6; }
+            50% { opacity: 0.6; box-shadow: inset 0 0 20px #3b82f6; }
+        }
+
+        .time-row { display: flex; gap: 8px; align-items: center; z-index: 5; }
+        .t-box { font-family: 'Orbitron', sans-serif; font-weight: 800; font-size: 2.2rem; color: #fff; text-shadow: 0 0 15px rgba(59, 130, 246, 0.6); line-height: 1; }
+        .t-sep { font-size: 1.8rem; font-weight: 900; color: #3b82f6; animation: blink 1s infinite; }
+        @keyframes blink { 0%, 100% { opacity: 1; } 50% { opacity: 0; } }
+        .date-display { font-size: 10px; font-weight: 900; text-transform: uppercase; letter-spacing: 4px; transition: all 0.5s ease; }
+
+        /* --- NEON SIDE MENU --- */
+        #side-menu { border-right: 2px solid #3b82f6; box-shadow: 8px 0 25px rgba(59, 130, 246, 0.3); }
+        .menu-box {
+            background: #0d0d0d; border: 1px solid #1a1a1a; border-radius: 24px;
+            padding: 18px; display: flex; align-items: center; gap: 18px;
+            transition: all 0.3s ease; width: 100%; text-align: left;
+        }
+        .menu-box:active { transform: scale(0.96); background: #151515; border-color: #3b82f6; }
+        .menu-box i { font-size: 20px; color: #3b82f6; width: 25px; text-align: center; }
+        .menu-box span { font-weight: 800; font-size: 14px; text-transform: uppercase; letter-spacing: 1px; }
+
+        /* --- LOGO & HEARTBEAT --- */
+        .logo-container { height: 85px; display: flex; align-items: center; justify-content: center; margin-bottom: 1rem; z-index: 50; }
+        #header-logo { height: 100%; width: auto; transform: scale(1.15); filter: drop-shadow(0 0 10px rgba(59, 130, 246, 0.3)); }
+        .heartbeat-slow { animation: heartbeat 4s ease-in-out infinite; }
+        @keyframes heartbeat { 0%, 100% { transform: scale(1.15); opacity: 0.95; } 50% { transform: scale(1.28); opacity: 1; } }
+
+        /* --- VFX ENGINE --- */
+        .vfx-shine { background: linear-gradient(110deg, #fff 40%, #3b82f6 50%, #fff 60%); background-size: 200% auto; -webkit-background-clip: text; -webkit-text-fill-color: transparent; animation: vfx-shine-anim 3s linear infinite; }
+        @keyframes vfx-shine-anim { to { background-position: 200% center; } }
+        .vfx-pulse { animation: vfx-pulse-anim 2s ease-in-out infinite; }
+        @keyframes vfx-pulse-anim { 0%, 100% { opacity: 1; } 50% { opacity: 0.5; } }
+        .vfx-chromatic { text-shadow: 1px 0 #ff0000, -1px 0 #00ffff; }
+
+        /* --- CARDS --- */
+        .card-container { perspective: 1000px; height: 420px; width: 100%; max-width: 380px; z-index: 10; margin-top: 10px; }
+        .card-inner { transition: transform 0.7s cubic-bezier(0.4, 0, 0.2, 1); transform-style: preserve-3d; height: 100%; }
+        .flip .card-inner { transform: rotateY(180deg); }
+        .card-front, .card-back { backface-visibility: hidden; position: absolute; inset: 0; border-radius: 50px; border: 1px solid #121212; background: #080808; }
+        .card-back { transform: rotateY(180deg); }
+        .no-scrollbar::-webkit-scrollbar { display: none; }
+
+        /* --- SCHEDULE BOX --- */
+        .sched-box { border-radius: 28px; padding: 12px; margin-top: 15px; text-align: center; position: relative; overflow: hidden; border: 1px solid #111; }
+        .vfx-corner-flash::before { content: ''; position: absolute; inset: -2px; background: conic-gradient(from 0deg, transparent, #3b82f6, transparent, #3b82f6, transparent); animation: rotate-border 4s linear infinite; z-index: -1; }
+        .vfx-corner-flash::after { content: ''; position: absolute; inset: 2px; background: #080808; border-radius: 26px; z-index: -1; }
+        @keyframes rotate-border { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+
+        .dev-tag { color: #ee4444; font-size: 10px; text-transform: uppercase; text-shadow: 0 0 5px #ee4444, 0 0 10px #ee4444; }
+
+        #splash { position: fixed; inset: 0; background: #000; z-index: 1000; display: flex; flex-direction: column; align-items: center; justify-content: center; transition: opacity 0.8s ease; }
+        .splash-logo { max-width: 250px; opacity: 0; transform: scale(0.4); }
+        .animate-pop { animation: popIn 1.2s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards; }
+        @keyframes popIn { 0% { transform: scale(0.4); opacity: 0; } 100% { transform: scale(1); opacity: 1; } }
+
+        input, textarea { background: #0d0d0d !important; border: 1px solid #1a1a1a !important; color: white !important; width: 100%; border-radius: 18px; padding: 15px; outline: none; margin-bottom: 15px; }
+        label { color: #3b82f6; font-size: 9px; font-weight: 900; text-transform: uppercase; margin-left: 10px; letter-spacing: 2px; display: block; margin-bottom: 5px; }
+        .vis-container { background: #040404; border: 1px solid #121212; padding: 12px; border-radius: 30px; }
+        canvas { width: 100%; height: 75px; }
+
+        /* --- MAINTENANCE SCREEN --- */
+        #maint-screen { z-index: 2000; display: none; }
+    </style>
+</head>
+<body>
+
+    <div id="splash"><img id="splash-img" class="splash-logo" src=""></div>
+    <div id="menu-overlay" class="fixed inset-0 bg-black/95 hidden z-[90]" onclick="toggleMenu()"></div>
+    
+    <div id="maint-screen" class="fixed inset-0 bg-black flex flex-col items-center justify-center p-10 text-center">
+        <div class="w-20 h-20 border-4 border-blue-600 border-t-transparent rounded-full animate-spin mb-8 shadow-[0_0_20px_#3b82f6]"></div>
+        <h1 class="text-3xl font-black italic text-blue-500 uppercase tracking-tighter mb-2">Maintenance</h1>
+        <p id="maint-text" class="text-gray-400 text-sm font-bold uppercase tracking-widest leading-relaxed"></p>
+        <div class="mt-10 px-6 py-2 border border-blue-900/30 rounded-full text-[10px] text-blue-900 font-black uppercase">Mera FM Pro</div>
+    </div>
+
+    <div id="side-menu" class="fixed top-0 -left-full w-[85%] h-full bg-[#050505] z-[100] transition-all duration-500 p-6 flex flex-col">
+        <div id="menu-main" class="flex-1">
+            <div class="flex justify-between items-center mb-10 mt-4">
+                <h2 class="text-blue-500 font-black text-3xl italic tracking-tighter">MERA FM</h2>
+                <button onclick="toggleMenu()" class="w-10 h-10 rounded-full bg-[#111] flex items-center justify-center"><i class="fas fa-times text-gray-500"></i></button>
+            </div>
+            <div class="space-y-4">
+                <button onclick="toggleMenu()" class="menu-box"><i class="fas fa-home"></i> <span>Home</span></button>
+                <button onclick="openForm('Contact Us')" class="menu-box"><i class="fas fa-headset"></i> <span>Contact Us</span></button>
+                <button onclick="openForm('Suggestion')" class="menu-box"><i class="fas fa-lightbulb"></i> <span>Suggestion</span></button>
+                <button onclick="openForm('Feedback')" class="menu-box"><i class="fas fa-star"></i> <span>Feedback</span></button>
+            </div>
+        </div>
+        <div class="pb-8 text-center"><p class="dev-tag">Developer : Mera FM Team</p></div>
+
+        <div id="form-section" class="hidden h-full flex flex-col absolute inset-0 bg-[#050505] p-6 z-[110]">
+            <button onclick="closeForm()" class="text-blue-500 font-black text-xs mb-8 flex items-center gap-2 uppercase tracking-widest"><i class="fas fa-arrow-left"></i> Back</button>
+            <h3 id="form-title" class="text-3xl font-black italic mb-6"></h3>
+            <div class="bg-[#0a0a0a] p-6 rounded-[35px] border border-[#151515]">
+                <label>Your Name</label><input type="text" id="f-name">
+                <div id="city-group"><label>City</label><input type="text" id="f-city"></div>
+                <div id="email-group" class="hidden"><label>Email</label><input type="email" id="f-email"></div>
+                <label>Message</label><textarea id="f-msg" rows="3"></textarea>
+                <button onclick="submitForm()" class="w-full bg-blue-600 py-5 rounded-2xl font-black uppercase tracking-widest">Send Message</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="px-6 h-[100dvh] flex flex-col items-center">
+        <div class="w-full pt-8 pb-4 flex justify-between items-center">
+            <button onclick="toggleMenu()" class="w-12 h-12 rounded-2xl bg-[#080808] border border-[#111] flex items-center justify-center"><i class="fas fa-bars-staggered text-xl"></i></button>
+            <div class="time-wrapper">
+                <div class="time-row"><div id="h-box" class="t-box">00</div><span class="t-sep">:</span><div id="m-box" class="t-box">00</div></div>
+                <div class="mt-1"><div id="date-label" class="date-display vfx-shine">01 JAN, TUESDAY</div></div>
+            </div>
+            <div class="w-12"></div>
+        </div>
+
+        <div class="logo-container"><img id="header-logo" class="heartbeat-slow" src=""></div>
+
+        <div class="card-container relative">
+            <div id="main-card" class="card-inner">
+                <div class="card-front p-8 flex flex-col">
+                    <h2 class="text-center text-[9px] font-black uppercase text-gray-700 tracking-[0.6em] mb-8 italic">Live Airwaves</h2>
+                    <div id="station-list" class="space-y-4 overflow-y-auto no-scrollbar"></div>
+                </div>
+                <div class="card-back p-8 flex flex-col justify-between text-center">
+                    <button onclick="history.back()" class="text-gray-800 pb-2"><i class="fas fa-chevron-down text-2xl"></i></button>
+                    <div>
+                        <div class="vis-container mb-4"><canvas id="visualizer"></canvas></div>
+                        <h2 id="p-title" class="text-2xl font-black uppercase italic">STATION</h2>
+                        <p id="p-freq" class="text-blue-500 font-bold text-lg mt-1 mb-4">000.0 MHz</p>
+                        <div id="sched-display" class="sched-box w-full">
+                            <p id="sched-label" class="text-[8px] font-black uppercase tracking-[0.3em] mb-1">Status</p>
+                            <h4 id="sched-show" class="text-xs font-black uppercase tracking-widest">Connecting...</h4>
+                            <p id="sched-rj" class="text-[9px] text-gray-500"></p>
+                            <div id="sched-time" class="inline-block mt-1 px-3 py-1 bg-black/50 rounded-full text-[8px] font-bold">24/7</div>
+                        </div>
+                    </div>
+                    <div class="flex justify-center items-center gap-8 pb-4">
+                        <button onclick="prevStation()" class="text-gray-700 text-2xl"><i class="fas fa-backward-step"></i></button>
+                        <button id="play-btn" onclick="togglePlay()" class="w-20 h-20 rounded-full bg-blue-600 flex items-center justify-center text-3xl shadow-xl"><i class="fas fa-pause"></i></button>
+                        <button onclick="nextStation()" class="text-gray-700 text-2xl"><i class="fas fa-forward-step"></i></button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <audio id="audioPlayer" crossorigin="anonymous" preload="auto"></audio>
+
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+        import { getDatabase, ref, onValue, push } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
+
+        const firebaseConfig = {
+            apiKey: "AIzaSyDdhEN_i5Xizoi3IOpkV863cBoktvmyNWc",
+            authDomain: "mera-fm.firebaseapp.com",
+            databaseURL: "https://mera-fm-default-rtdb.firebaseio.com",
+            projectId: "mera-fm",
+            storageBucket: "mera-fm.firebasestorage.app",
+            appId: "1:599700033830:web:2989906f79f09c2f3bb1e7"
+        };
+
+        const app = initializeApp(firebaseConfig);
+        const db = getDatabase(app);
+        const audio = document.getElementById('audioPlayer');
+        let stations = [], curIdx = 0, audioCtx, analyser, gainNode, bassNode, limiter;
+        let isUserPaused = true;
+
+        // --- VFX ENGINE ---
+        const vfxBase = ['vfx-shine', 'vfx-pulse', 'vfx-chromatic'];
+        const vfxColors = ['text-white', 'text-blue-400', 'text-cyan-300', 'text-emerald-400', 'text-yellow-400', 'text-pink-400'];
+        let currentVFX = 'vfx-shine text-white';
+
+        function generateVFX() {
+            currentVFX = `${vfxBase[Math.floor(Math.random() * vfxBase.length)]} ${vfxColors[Math.floor(Math.random() * vfxColors.length)]}`;
+            document.getElementById('date-label').className = `date-display ${currentVFX}`;
+        }
+
+        // --- CLOCK & SCHEDULE UPDATE ---
+        function updateClock() {
+            const now = new Date();
+            document.getElementById('h-box').innerText = String(now.getHours()).padStart(2, '0');
+            document.getElementById('m-box').innerText = String(now.getMinutes()).padStart(2, '0');
+            document.getElementById('date-label').innerText = now.toLocaleDateString('en-GB', { weekday: 'long', day: '2-digit', month: 'short' });
+            if (stations[curIdx]) updateSchedule(stations[curIdx]);
+        }
+
+        function updateSchedule(station) {
+            if (!station) return;
+            const now = new Date();
+            const day = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"][now.getDay()];
+            const timeMin = now.getHours() * 60 + now.getMinutes();
+            const box = document.getElementById('sched-display');
+            const title = document.getElementById('sched-show');
+            const rj = document.getElementById('sched-rj');
+            
+            if (!station.weeklySchedule || !station.weeklySchedule[day]) {
+                box.className = "sched-box vfx-corner-flash";
+                title.innerText = "BACK TO BACK MUSIC"; title.className = `text-xs font-black uppercase ${currentVFX}`;
+                rj.innerText = "Mera FM Digital"; return;
+            }
+
+            const slots = Object.values(station.weeklySchedule[day]);
+            let ongoing = slots.find(s => {
+                const [fh, fm] = s.from.split(':').map(Number);
+                const [th, tm] = s.to.split(':').map(Number);
+                return timeMin >= (fh*60+fm) && timeMin < (th*60+tm);
+            });
+
+            if (ongoing) {
+                box.className = "sched-box border-green-500/20 bg-green-500/5";
+                title.innerText = ongoing.title; title.className = "text-xs font-black uppercase text-green-500";
+                rj.innerText = `With RJ ${ongoing.rj}`;
+            } else {
+                box.className = "sched-box vfx-corner-flash";
+                title.innerText = "BACK TO BACK MUSIC"; title.className = `text-xs font-black uppercase ${currentVFX}`;
+                rj.innerText = "Enjoy the hits";
+            }
+        }
+
+        // --- GLOBAL SETTINGS & MAINTENANCE LOGIC ---
+        onValue(ref(db, 'settings'), (snap) => {
+            const data = snap.val() || {};
+            const url = data.globalLogo || "";
+            const isEnabled = data.logoEnabled !== false;
+            const isMaintMode = data.isMaintenance || false; 
+            const maintMsg = data.maintenanceMsg || "We are currently under maintenance.";
+
+            // 1. Logo & Splash Update
+            document.getElementById('splash-img').src = url;
+            document.getElementById('header-logo').src = url;
+            document.getElementById('header-logo').style.display = isEnabled ? 'block' : 'none';
+
+            if (!isEnabled) {
+                document.getElementById('splash').style.display = 'none';
+            } else {
+                document.getElementById('splash-img').onload = () => {
+                    document.getElementById('splash-img').classList.add('animate-pop');
+                    setTimeout(() => { 
+                        document.getElementById('splash').style.opacity = '0'; 
+                        setTimeout(() => document.getElementById('splash').style.display='none', 800); 
+                    }, 3000);
+                };
+            }
+
+            // 2. Maintenance Overlay Logic
+            const maintOverlay = document.getElementById('maint-screen');
+            if (isMaintMode) {
+                audio.pause();
+                isUserPaused = true;
+                updateBtn();
+                document.getElementById('maint-text').innerText = maintMsg;
+                maintOverlay.style.display = 'flex';
+            } else {
+                maintOverlay.style.display = 'none';
+            }
+        });
+
+        // --- STATIONS LOGIC ---
+        onValue(ref(db, 'stations'), (snap) => {
+            const list = document.getElementById('station-list'); list.innerHTML = ''; 
+            stations = [];
+            snap.forEach((child) => {
+                const s = child.val(); s.id = child.key;
+                stations.push(s);
+            });
+            stations.sort((a, b) => (a.order || 0) - (b.order || 0));
+            stations.forEach((s, index) => {
+                const isM = s.isMaint || false;
+                list.innerHTML += `
+                <button onclick="${isM ? '' : `selectStation(${index})`}" class="w-full flex justify-between items-center rounded-[30px] p-5 border border-[#121212] bg-[#0a0a0a] ${isM ? 'opacity-50 pointer-events-none' : 'active:scale-95 transition-all'}">
+                    <div class="flex items-center gap-4">
+                        ${s.logo ? `<img src="${s.logo}" class="h-10 w-10" onerror="this.style.display='none'">` : `<div class="w-3 h-3 rounded-full bg-blue-600 animate-pulse ml-4"></div>`}
+                        <div class="text-left"><span class="block font-black uppercase text-base leading-tight">${s.name}</span><span class="text-[9px] text-gray-600 tracking-widest uppercase">${s.freq} MHz</span></div>
+                    </div>
+                    ${isM ? '<span class="text-[8px] font-black italic tracking-wider" style="color: #ff0000; text-shadow: 0 0 8px #ff0000, 0 0 15px #ff0000;">MAINTENANCE</span>' : '<i class="fas fa-circle-play text-lg text-blue-500"></i>'}
+                </button>`;
+            });
+        });
+
+        window.selectStation = (idx) => {
+            const s = stations[idx]; curIdx = idx;
+            document.getElementById('p-title').innerText = s.name;
+            document.getElementById('p-freq').innerText = s.freq + " MHz";
+            audio.src = s.url;
+            document.getElementById('main-card').parentElement.classList.add('flip');
+            history.pushState({p:1}, '');
+            playAudio(); generateVFX(); updateSchedule(s);
+        };
+
+        function initVis() {
+            if (audioCtx) return;
+            audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+            const source = audioCtx.createMediaElementSource(audio);
+            analyser = audioCtx.createAnalyser(); analyser.fftSize = 64;
+            bassNode = audioCtx.createBiquadFilter(); bassNode.type = "lowshelf"; bassNode.frequency.value = 100; bassNode.gain.value = 6; 
+            limiter = audioCtx.createDynamicsCompressor(); limiter.threshold.setValueAtTime(-3.0, audioCtx.currentTime); 
+            gainNode = audioCtx.createGain(); gainNode.gain.value = 1.35; 
+            source.connect(bassNode); bassNode.connect(limiter); limiter.connect(analyser); analyser.connect(gainNode); gainNode.connect(audioCtx.destination);
+            const canvas = document.getElementById('visualizer'); const ctx = canvas.getContext('2d'); const data = new Uint8Array(analyser.frequencyBinCount);
+            function draw() { requestAnimationFrame(draw); analyser.getByteFrequencyData(data); ctx.clearRect(0,0,canvas.width, canvas.height);
+                let x = 0; const bWidth = (canvas.width/32)*2.5;
+                for(let i=0; i<32; i++){ const h = data[i]/2.2; ctx.fillStyle = `rgba(59,130,246,${h/100+0.4})`; ctx.beginPath(); ctx.roundRect(x, canvas.height-h, bWidth-4, h, [5,5,0,0]); ctx.fill(); x += bWidth; }
+            } draw();
+        }
+
+        function playAudio() { 
+            if(!audioCtx) initVis(); 
+            if (audioCtx.state === 'suspended') audioCtx.resume(); 
+            isUserPaused = false;
+            audio.play().catch(() => console.log("Buffering...")); 
+            updateBtn(); 
+        }
+
+        window.togglePlay = () => { if (audio.paused) playAudio(); else { isUserPaused = true; audio.pause(); updateBtn(); } };
+        function updateBtn() { document.getElementById('play-btn').innerHTML = audio.paused ? '<i class="fas fa-play ml-1"></i>' : '<i class="fas fa-pause"></i>'; }
+        window.nextStation = () => selectStation((curIdx + 1) % stations.length);
+        window.prevStation = () => selectStation((curIdx - 1 + stations.length) % stations.length);
+        window.toggleMenu = () => { document.getElementById('side-menu').classList.toggle('-left-full'); document.getElementById('side-menu').classList.toggle('left-0'); document.getElementById('menu-overlay').classList.toggle('hidden'); };
+        
+        window.openForm = (t) => { 
+            document.getElementById('form-section').classList.remove('hidden'); document.getElementById('form-title').innerText = t; 
+            const isC = t === 'Contact Us';
+            document.getElementById('city-group').classList.toggle('hidden', isC);
+            document.getElementById('email-group').classList.toggle('hidden', !isC);
+        };
+        window.closeForm = () => { document.getElementById('form-section').classList.add('hidden'); };
+        window.submitForm = () => {
+            const payload = { name: document.getElementById('f-name').value, message: document.getElementById('f-msg').value, city: document.getElementById('f-city').value, email: document.getElementById('f-email').value, time: new Date().toLocaleString() };
+            if(!payload.name || !payload.message) return alert("Please fill all fields");
+            push(ref(db, `inbox/${document.getElementById('form-title').innerText}`), payload);
+            alert("Sent Successfully!"); closeForm(); toggleMenu();
+        };
+
+        window.addEventListener('popstate', () => { document.getElementById('main-card').parentElement.classList.remove('flip'); isUserPaused=true; audio.pause(); updateBtn(); });
+        setInterval(updateClock, 1000); updateClock();
+    </script>
+</body>
+</html>
