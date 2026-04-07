@@ -197,7 +197,8 @@
 
         function generateVFX() {
             currentVFX = `${vfxBase[Math.floor(Math.random() * vfxBase.length)]} ${vfxColors[Math.floor(Math.random() * vfxColors.length)]}`;
-            document.getElementById('date-label').className = `date-display ${currentVFX}`;
+            const label = document.getElementById('date-label');
+            if(label) label.className = `date-display ${currentVFX}`;
         }
 
         // --- CLOCK & SCHEDULE UPDATE ---
@@ -242,7 +243,7 @@
             }
         }
 
-        // --- GLOBAL SETTINGS & MAINTENANCE LOGIC ---
+        // --- GLOBAL SETTINGS ---
         onValue(ref(db, 'settings'), (snap) => {
             const data = snap.val() || {};
             const url = data.globalLogo || "";
@@ -250,7 +251,6 @@
             const isMaintMode = data.isMaintenance || false; 
             const maintMsg = data.maintenanceMsg || "We are currently under maintenance.";
 
-            // 1. Logo & Splash Update
             document.getElementById('splash-img').src = url;
             document.getElementById('header-logo').src = url;
             document.getElementById('header-logo').style.display = isEnabled ? 'block' : 'none';
@@ -267,7 +267,6 @@
                 };
             }
 
-            // 2. Maintenance Overlay Logic
             const maintOverlay = document.getElementById('maint-screen');
             if (isMaintMode) {
                 audio.pause();
@@ -280,7 +279,7 @@
             }
         });
 
-        // --- STATIONS LOGIC ---
+        // --- STATIONS LOGIC WITH SMART PROXY ---
         onValue(ref(db, 'stations'), (snap) => {
             const list = document.getElementById('station-list'); list.innerHTML = ''; 
             stations = [];
@@ -306,7 +305,14 @@
             const s = stations[idx]; curIdx = idx;
             document.getElementById('p-title').innerText = s.name;
             document.getElementById('p-freq').innerText = s.freq + " MHz";
-            audio.src = s.url;
+            
+            // --- UPDATED PROXY LOGIC ---
+            let finalUrl = s.url;
+            if (window.location.protocol === 'https:' && s.url.startsWith('http:')) {
+                finalUrl = `https://api.allorigins.win/raw?url=${encodeURIComponent(s.url)}`;
+            }
+            
+            audio.src = finalUrl;
             document.getElementById('main-card').parentElement.classList.add('flip');
             history.pushState({p:1}, '');
             playAudio(); generateVFX(); updateSchedule(s);
