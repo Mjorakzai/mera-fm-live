@@ -169,8 +169,7 @@
         </div>
     </div>
 
-    <!-- AUDIO PLAYER (No CORS constraints) -->
-    <audio id="audioPlayer" preload="none"></audio>
+    <audio id="audioPlayer" crossorigin="anonymous" preload="auto"></audio>
 
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
@@ -188,17 +187,10 @@
         const app = initializeApp(firebaseConfig);
         const db = getDatabase(app);
         const audio = document.getElementById('audioPlayer');
-        let stations = [], curIdx = 0;
+        let stations = [], curIdx = 0, audioCtx, analyser, gainNode, bassNode, limiter;
         let isUserPaused = true;
 
-        setTimeout(() => {
-            const splash = document.getElementById('splash');
-            if(splash) {
-                splash.style.opacity = '0';
-                setTimeout(() => splash.style.display = 'none', 800);
-            }
-        }, 3000);
-
+        // --- VFX ENGINE ---
         const vfxBase = ['vfx-shine', 'vfx-pulse', 'vfx-chromatic'];
         const vfxColors = ['text-white', 'text-blue-400', 'text-cyan-300', 'text-emerald-400', 'text-yellow-400', 'text-pink-400'];
         let currentVFX = 'vfx-shine text-white';
@@ -208,6 +200,7 @@
             document.getElementById('date-label').className = `date-display ${currentVFX}`;
         }
 
+        // --- CLOCK & SCHEDULE UPDATE ---
         function updateClock() {
             const now = new Date();
             document.getElementById('h-box').innerText = String(now.getHours()).padStart(2, '0');
@@ -249,6 +242,7 @@
             }
         }
 
+        // --- GLOBAL SETTINGS & MAINTENANCE LOGIC ---
         onValue(ref(db, 'settings'), (snap) => {
             const data = snap.val() || {};
             const url = data.globalLogo || "";
@@ -256,13 +250,24 @@
             const isMaintMode = data.isMaintenance || false; 
             const maintMsg = data.maintenanceMsg || "We are currently under maintenance.";
 
-            if(url) {
-                document.getElementById('splash-img').src = url;
-                document.getElementById('header-logo').src = url;
-                document.getElementById('splash-img').classList.add('animate-pop');
-            }
+            // 1. Logo & Splash Update
+            document.getElementById('splash-img').src = url;
+            document.getElementById('header-logo').src = url;
             document.getElementById('header-logo').style.display = isEnabled ? 'block' : 'none';
 
+            if (!isEnabled) {
+                document.getElementById('splash').style.display = 'none';
+            } else {
+                document.getElementById('splash-img').onload = () => {
+                    document.getElementById('splash-img').classList.add('animate-pop');
+                    setTimeout(() => { 
+                        document.getElementById('splash').style.opacity = '0'; 
+                        setTimeout(() => document.getElementById('splash').style.display='none', 800); 
+                    }, 3000);
+                };
+            }
+
+            // 2. Maintenance Overlay Logic
             const maintOverlay = document.getElementById('maint-screen');
             if (isMaintMode) {
                 audio.pause();
@@ -275,6 +280,7 @@
             }
         });
 
+        // --- STATIONS LOGIC ---
         onValue(ref(db, 'stations'), (snap) => {
             const list = document.getElementById('station-list'); list.innerHTML = ''; 
             stations = [];
@@ -306,41 +312,28 @@
             playAudio(); generateVFX(); updateSchedule(s);
         };
 
-        // --- NEW STANDALONE VISUALIZER (NO AUDIO CONTEXT CORS BLOCK) ---
-        function startVisualizer() {
-            const canvas = document.getElementById('visualizer'); 
-            const ctx = canvas.getContext('2d'); 
-            function draw() { 
-                requestAnimationFrame(draw); 
-                ctx.clearRect(0,0,canvas.width, canvas.height);
+        function initVis() {
+            if (audioCtx) return;
+            audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+            const source = audioCtx.createMediaElementSource(audio);
+            analyser = audioCtx.createAnalyser(); analyser.fftSize = 64;
+            bassNode = audioCtx.createBiquadFilter(); bassNode.type = "lowshelf"; bassNode.frequency.value = 100; bassNode.gain.value = 6; 
+            limiter = audioCtx.createDynamicsCompressor(); limiter.threshold.setValueAtTime(-3.0, audioCtx.currentTime); 
+            gainNode = audioCtx.createGain(); gainNode.gain.value = 1.35; 
+            source.connect(bassNode); bassNode.connect(limiter); limiter.connect(analyser); analyser.connect(gainNode); gainNode.connect(audioCtx.destination);
+            const canvas = document.getElementById('visualizer'); const ctx = canvas.getContext('2d'); const data = new Uint8Array(analyser.frequencyBinCount);
+            function draw() { requestAnimationFrame(draw); analyser.getByteFrequencyData(data); ctx.clearRect(0,0,canvas.width, canvas.height);
                 let x = 0; const bWidth = (canvas.width/32)*2.5;
-                for(let i=0; i<32; i++){ 
-                    const h = !audio.paused ? (Math.random() * 50 + 10) : 5; 
-                    ctx.fillStyle = `rgba(59,130,246,${h/100+0.4})`; 
-                    ctx.beginPath(); 
-                    ctx.roundRect(x, canvas.height-h, bWidth-4, h, [5,5,0,0]); 
-                    ctx.fill(); 
-                    x += bWidth; 
-                }
-            } 
-            draw();
+                for(let i=0; i<32; i++){ const h = data[i]/2.2; ctx.fillStyle = `rgba(59,130,246,${h/100+0.4})`; ctx.beginPath(); ctx.roundRect(x, canvas.height-h, bWidth-4, h, [5,5,0,0]); ctx.fill(); x += bWidth; }
+            } draw();
         }
-        startVisualizer();
 
         function playAudio() { 
+            if(!audioCtx) initVis(); 
+            if (audioCtx.state === 'suspended') audioCtx.resume(); 
             isUserPaused = false;
-            document.getElementById('sched-show').innerText = "Buffering...";
-            
-            audio.play().then(() => {
-                updateSchedule(stations[curIdx]);
-                updateBtn(); 
-            }).catch((error) => {
-                const title = document.getElementById('sched-show');
-                title.innerText = "STREAM BLOCK / ERROR";
-                title.className = "text-[10px] font-black uppercase text-red-500 tracking-widest";
-                document.getElementById('sched-rj').innerText = "Check your link (HTTP vs HTTPS)";
-                updateBtn();
-            });
+            audio.play().catch(() => console.log("Buffering...")); 
+            updateBtn(); 
         }
 
         window.togglePlay = () => { if (audio.paused) playAudio(); else { isUserPaused = true; audio.pause(); updateBtn(); } };
