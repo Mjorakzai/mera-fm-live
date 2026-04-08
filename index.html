@@ -138,9 +138,9 @@
         const app = initializeApp(firebaseConfig);
         const db = getDatabase(app);
         const audio = document.getElementById('audioPlayer');
-        let stations = [], curIdx = 0, audioCtx, analyser;
+        let stations = [], curIdx = 0, audioCtx, analyser, sourceNode;
 
-        // Fetch Settings (Logo/Maintenance)
+        // Fetch Settings
         onValue(ref(db, 'settings'), (snap) => {
             const data = snap.val() || {};
             const url = data.globalLogo || "";
@@ -161,7 +161,7 @@
             const list = document.getElementById('station-list'); list.innerHTML = ''; 
             stations = [];
             snap.forEach((child) => {
-                const s = child.val(); s.id = child.key;
+                const s = child.val();
                 stations.push(s);
             });
             stations.sort((a, b) => (a.order || 0) - (b.order || 0));
@@ -177,33 +177,38 @@
             });
         });
 
-        // --- UPDATED DIRECT PLAY LOGIC ---
+        // --- DIRECT STATION SELECTION ---
         window.selectStation = (idx) => {
             const s = stations[idx]; curIdx = idx;
             document.getElementById('p-title').innerText = s.name;
             document.getElementById('p-freq').innerText = s.freq + " MHz";
             
-            // Sab proxies khatam, direct link use karen
+            // Audio reset for clean loading
             audio.pause();
-            audio.src = s.url;
+            audio.removeAttribute('src');
             audio.load();
+            audio.src = s.url;
 
             document.getElementById('main-card').parentElement.classList.add('flip');
             history.pushState({p:1}, '');
             
-            // Manual delay for stable mobile playback
+            // Play with tiny delay
             setTimeout(() => {
                 playAudio();
-            }, 200);
+            }, 300);
         };
 
         function playAudio() { 
-            if(!audioCtx) initVis(); 
-            if (audioCtx && audioCtx.state === 'suspended') audioCtx.resume(); 
+            // AudioContext resume (important for mobile browsers)
+            if (audioCtx && audioCtx.state === 'suspended') {
+                audioCtx.resume();
+            }
+
             audio.play().then(() => {
+                if(!audioCtx) initVis(); // Play hone ke baad visualizer on karein
                 updateBtn();
             }).catch(e => {
-                console.log("Playback blocked by browser/app settings");
+                console.log("Play blocked. Waiting for touch.");
                 updateBtn();
             }); 
         }
@@ -216,27 +221,47 @@
 
         window.nextStation = () => window.selectStation((curIdx + 1) % stations.length);
         window.prevStation = () => window.selectStation((curIdx - 1 + stations.length) % stations.length);
+        
         window.toggleMenu = () => { 
             document.getElementById('side-menu').classList.toggle('-left-full'); 
             document.getElementById('side-menu').classList.toggle('left-0'); 
             document.getElementById('menu-overlay').classList.toggle('hidden'); 
         };
 
+        // --- STABLE VISUALIZER LOGIC ---
         function initVis() {
             try {
-                audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-                const source = audioCtx.createMediaElementSource(audio);
-                analyser = audioCtx.createAnalyser(); analyser.fftSize = 64;
-                source.connect(analyser); analyser.connect(audioCtx.destination);
-                const canvas = document.getElementById('visualizer'); const ctx = canvas.getContext('2d'); const data = new Uint8Array(analyser.frequencyBinCount);
+                if (!audioCtx) {
+                    audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+                    sourceNode = audioCtx.createMediaElementSource(audio);
+                    analyser = audioCtx.createAnalyser();
+                    analyser.fftSize = 64;
+                    sourceNode.connect(analyser);
+                    analyser.connect(audioCtx.destination);
+                }
+
+                const canvas = document.getElementById('visualizer');
+                const ctx = canvas.getContext('2d');
+                const data = new Uint8Array(analyser.frequencyBinCount);
+
                 function draw() { 
-                    requestAnimationFrame(draw); analyser.getByteFrequencyData(data); ctx.clearRect(0,0,canvas.width, canvas.height);
-                    let x = 0; const bWidth = (canvas.width/32)*2.5;
+                    requestAnimationFrame(draw); 
+                    analyser.getByteFrequencyData(data); 
+                    ctx.clearRect(0,0,canvas.width, canvas.height);
+                    let x = 0; 
+                    const bWidth = (canvas.width/32)*2.5;
                     for(let i=0; i<32; i++){ 
-                        const h = data[i]/2.2; ctx.fillStyle = `rgba(59,130,246,${h/100+0.4})`; ctx.beginPath(); ctx.roundRect(x, canvas.height-h, bWidth-4, h, [5,5,0,0]); ctx.fill(); x += bWidth; 
+                        const h = data[i]/2.2; 
+                        ctx.fillStyle = `rgba(59,130,246,${h/100+0.4})`; 
+                        ctx.beginPath(); 
+                        ctx.roundRect(x, canvas.height-h, bWidth-4, h, [5,5,0,0]); 
+                        ctx.fill(); 
+                        x += bWidth; 
                     } 
                 } draw();
-            } catch(e) { console.log("Visualizer connection failed"); }
+            } catch(e) {
+                console.log("Visualizer connection bypassed for stability.");
+            }
         }
 
         window.addEventListener('popstate', () => { 
@@ -245,6 +270,7 @@
             updateBtn(); 
         });
 
+        // Time Update
         setInterval(() => {
             const now = new Date();
             document.getElementById('h-box').innerText = String(now.getHours()).padStart(2, '0');
