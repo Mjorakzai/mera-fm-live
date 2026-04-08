@@ -112,7 +112,7 @@
                     </div>
                     <div class="flex justify-center items-center gap-8 pb-4">
                         <button onclick="prevStation()" class="text-gray-700 text-2xl"><i class="fas fa-backward-step"></i></button>
-                        <button id="play-btn" onclick="togglePlay()" class="w-20 h-20 rounded-full bg-blue-600 flex items-center justify-center text-3xl shadow-xl"><i class="fas fa-pause"></i></button>
+                        <button id="play-btn" onclick="togglePlay()" class="w-20 h-20 rounded-full bg-blue-600 flex items-center justify-center text-3xl shadow-xl"><i class="fas fa-play"></i></button>
                         <button onclick="nextStation()" class="text-gray-700 text-2xl"><i class="fas fa-forward-step"></i></button>
                     </div>
                 </div>
@@ -177,59 +177,74 @@
             });
         });
 
-        // --- THE POWERFUL PROXY SYSTEM ---
+        // --- UPDATED DIRECT PLAY LOGIC ---
         window.selectStation = (idx) => {
             const s = stations[idx]; curIdx = idx;
             document.getElementById('p-title').innerText = s.name;
             document.getElementById('p-freq').innerText = s.freq + " MHz";
             
-            // Priority 1: AllOrigins (Best for IP-based streams)
-            let finalUrl = `https://api.allorigins.win/raw?url=${encodeURIComponent(s.url)}`;
-            
-            console.log("Attempting Proxy 1...");
-            audio.src = finalUrl;
+            // Sab proxies khatam, direct link use karen
+            audio.pause();
+            audio.src = s.url;
             audio.load();
-
-            // Priority 2: Fallback to CorsProxy if first fails
-            audio.onerror = function() {
-                if(audio.src.includes('allorigins')) {
-                    console.log("Switching to Proxy 2...");
-                    audio.src = `https://corsproxy.io/?${encodeURIComponent(s.url)}`;
-                    audio.load();
-                }
-            };
 
             document.getElementById('main-card').parentElement.classList.add('flip');
             history.pushState({p:1}, '');
-            playAudio();
+            
+            // Manual delay for stable mobile playback
+            setTimeout(() => {
+                playAudio();
+            }, 200);
         };
 
         function playAudio() { 
             if(!audioCtx) initVis(); 
-            if (audioCtx.state === 'suspended') audioCtx.resume(); 
-            audio.play().catch(e => console.log("Playback blocked or buffering...")); 
-            updateBtn(); 
+            if (audioCtx && audioCtx.state === 'suspended') audioCtx.resume(); 
+            audio.play().then(() => {
+                updateBtn();
+            }).catch(e => {
+                console.log("Playback blocked by browser/app settings");
+                updateBtn();
+            }); 
         }
 
         window.togglePlay = () => { if (audio.paused) playAudio(); else { audio.pause(); updateBtn(); } };
-        function updateBtn() { document.getElementById('play-btn').innerHTML = audio.paused ? '<i class="fas fa-play ml-1"></i>' : '<i class="fas fa-pause"></i>'; }
-        window.nextStation = () => window.selectStation((curIdx + 1) % stations.length);
-        window.prevStation = () => window.selectStation((curIdx - 1 + stations.length) % stations.length);
-        window.toggleMenu = () => { document.getElementById('side-menu').classList.toggle('-left-full'); document.getElementById('side-menu').classList.toggle('left-0'); document.getElementById('menu-overlay').classList.toggle('hidden'); };
-
-        function initVis() {
-            audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-            const source = audioCtx.createMediaElementSource(audio);
-            analyser = audioCtx.createAnalyser(); analyser.fftSize = 64;
-            source.connect(analyser); analyser.connect(audioCtx.destination);
-            const canvas = document.getElementById('visualizer'); const ctx = canvas.getContext('2d'); const data = new Uint8Array(analyser.frequencyBinCount);
-            function draw() { requestAnimationFrame(draw); analyser.getByteFrequencyData(data); ctx.clearRect(0,0,canvas.width, canvas.height);
-                let x = 0; const bWidth = (canvas.width/32)*2.5;
-                for(let i=0; i<32; i++){ const h = data[i]/2.2; ctx.fillStyle = `rgba(59,130,246,${h/100+0.4})`; ctx.beginPath(); ctx.roundRect(x, canvas.height-h, bWidth-4, h, [5,5,0,0]); ctx.fill(); x += bWidth; }
-            } draw();
+        
+        function updateBtn() { 
+            document.getElementById('play-btn').innerHTML = audio.paused ? '<i class="fas fa-play ml-1"></i>' : '<i class="fas fa-pause"></i>'; 
         }
 
-        window.addEventListener('popstate', () => { document.getElementById('main-card').parentElement.classList.remove('flip'); audio.pause(); updateBtn(); });
+        window.nextStation = () => window.selectStation((curIdx + 1) % stations.length);
+        window.prevStation = () => window.selectStation((curIdx - 1 + stations.length) % stations.length);
+        window.toggleMenu = () => { 
+            document.getElementById('side-menu').classList.toggle('-left-full'); 
+            document.getElementById('side-menu').classList.toggle('left-0'); 
+            document.getElementById('menu-overlay').classList.toggle('hidden'); 
+        };
+
+        function initVis() {
+            try {
+                audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+                const source = audioCtx.createMediaElementSource(audio);
+                analyser = audioCtx.createAnalyser(); analyser.fftSize = 64;
+                source.connect(analyser); analyser.connect(audioCtx.destination);
+                const canvas = document.getElementById('visualizer'); const ctx = canvas.getContext('2d'); const data = new Uint8Array(analyser.frequencyBinCount);
+                function draw() { 
+                    requestAnimationFrame(draw); analyser.getByteFrequencyData(data); ctx.clearRect(0,0,canvas.width, canvas.height);
+                    let x = 0; const bWidth = (canvas.width/32)*2.5;
+                    for(let i=0; i<32; i++){ 
+                        const h = data[i]/2.2; ctx.fillStyle = `rgba(59,130,246,${h/100+0.4})`; ctx.beginPath(); ctx.roundRect(x, canvas.height-h, bWidth-4, h, [5,5,0,0]); ctx.fill(); x += bWidth; 
+                    } 
+                } draw();
+            } catch(e) { console.log("Visualizer connection failed"); }
+        }
+
+        window.addEventListener('popstate', () => { 
+            document.getElementById('main-card').parentElement.classList.remove('flip'); 
+            audio.pause(); 
+            updateBtn(); 
+        });
+
         setInterval(() => {
             const now = new Date();
             document.getElementById('h-box').innerText = String(now.getHours()).padStart(2, '0');
